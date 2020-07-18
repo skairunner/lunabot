@@ -110,6 +110,7 @@ def get_message_link(msg):
     return f"https://discordapp.com/channels/{msg.guild.id}/{msg.channel.id}/{msg.id}"
 
 STAFF_ROLE_ID = 731086961741267024
+ADMIN_ROLE_ID = 724654442233987085
 # Check if the person is staff
 def is_staff(member):
     for role in member.roles:
@@ -117,6 +118,12 @@ def is_staff(member):
             return True
     return False
 
+# Check if the person is admin
+def is_admin(member):
+    for role in member.roles:
+        if role.id == ADMIN_ROLE_ID:
+            return True
+    return False
 
 SCENE_LOG = 733418460629172274
 ABORT_COMMANDS = ["stop", "nevermind", "nvm"]
@@ -229,6 +236,26 @@ async def show_leaderboard(ctx):
 async def show_leaderboard(ctx, *args):
     '''Show the leaderboard for a period'''
     pass
+
+@client.command(name="clear_last")
+@handle_error
+async def clear_last(ctx, x: int):
+    x = int(x)
+    '''clear the last X messages. Only up to 100 at a time.'''
+    if not is_admin(ctx.message.author):
+        await ctx.send(f"I'm sorry, {ctx.message.author.display_name}, I'm afraid I can't do that. (Only admins can!)")
+        return
+    if x == 0:
+        await ctx.send("Um. Okay, I deleted 0 messages. Just for you.")
+        return
+    if x < 0 or x > 100:
+        await ctx.send("I can only delete a number of messages between 1 and 100. <:nosferatu:732691044574953502>")
+        return
+    # Do the deleet
+    messages =  await ctx.message.channel.history(limit=x).flatten()
+    await ctx.channel.delete_messages(messages)
+    
+
 
 #
 #
