@@ -22,6 +22,19 @@ MIGRATIONS = {
             CREATE TABLE channels(id INTEGER PRIMARY KEY);
             """
         ]
+    ],
+    "leaderboard": [
+        [
+            """
+            CREATE TABLE messages(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                author INTEGER,
+                date NUMERIC,
+                channel_id INTEGER,
+                message_id INTEGER
+            );
+            """
+        ]
     ]
 }
 
@@ -56,7 +69,7 @@ class Database:
         for i in range(start_version, len(migration)):
             for statement in migration[i]:
                 cursor.execute(statement)
-            cursor.execute("""INSERT INTO _version(date, version) VALUES(datetime('now'), ?);""", (i+1,))
+            cursor.execute("""INSERT INTO _version(date, version) VALUES(datetime('now', 'utc'), ?);""", (i+1,))
         self.commit()
 
 

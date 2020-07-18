@@ -1,7 +1,12 @@
 from db import Database
+from datetime import datetime
 from typing import Union
 
 # Some commonly-used queries
+
+#
+# SCENE
+#
 
 def get_open_channel(db: Database) -> Union[None, int]:
     '''Return any channel with no scene going on, or return None if that isn't possible'''
@@ -38,7 +43,7 @@ def add_new_channel(db: Database, channel_id: int, channel_name: str):
 def reserve_channel(db: Database, channel_id: int, scene_name: str, author_id: int):
     '''Reserve a channel for a scene'''
     c = db.get()
-    c.execute("UPDATE channel_scenes SET created=datetime('now'), scene_name=?, updated=datetime('now'), created_by=? WHERE id=?",
+    c.execute("UPDATE channel_scenes SET created=datetime('now', 'utc'), scene_name=?, updated=datetime('now', 'utc'), created_by=? WHERE id=?",
         (scene_name, author_id, channel_id))
     db.commit()
 
@@ -50,3 +55,31 @@ def free_channel(db: Database, channel_id: int):
 
 def count_channels(db: Database) -> int:
     return db.get().execute("SELECT count(*) FROM channels;").fetchone()[0]
+
+#
+# LEADERBOARD
+#
+
+def date_as_sql(d: datetime):
+    return d.strftime('%Y-%m-%d %H:%M:%S')
+
+def record_message(db: Database, msg):
+    '''Add message info to the database'''
+    db.get().execute("INSERT INTO messages(author, date, channel_id, message_id) VALUES(?, datetime('now', 'utc'), ?, ?);",
+    (msg.author.id, msg.channel.id, msg.id))
+    db.commit()
+
+def count_messages(db: Database, before=None, after=None, limit: int =None):
+    '''Count the number of messages per person in the given time range'''
+    clauses = []
+    variables = []
+    if before is not None:
+        clauses.append("date < ?")
+        variables.append(date_as_sql(before))
+    if after is not None:
+        clauses.append("date > ?")
+        variables.append(date_as_sql(after))
+    clauses = " AND ".join(clauses)
+    where_clause = '' if before is None and after is None else f'WHERE {clauses}'
+    limit_clause = '' if limit is None else f'LIMIT {limit}'
+    return db.get().execute(f"SELECT author, COUNT(*) FROM messages {where_clause} GROUP BY author ORDER BY COUNT(*) DESC {limit_clause};", variables).fetchall()

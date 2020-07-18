@@ -1,13 +1,15 @@
 import asyncio
 import discord
 from discord.ext import commands
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import random
 import os
 from db import get_database
 import queries as q
 
 client = commands.Bot('/')
+
+ROLEPLAY_CHANNELS_CATEGORY = 731098249275899947
 
 def handle_error(f):
     async def inner(ctx, *args, **kwargs):
@@ -21,6 +23,20 @@ def handle_error(f):
 @client.event
 async def on_ready():
     print("mrow")
+
+@client.event
+async def on_message(msg):
+    '''Do all handling related to checking for messages'''
+    if msg.channel.category_id == ROLEPLAY_CHANNELS_CATEGORY:
+        # Count!
+        db = get_database("leaderboard", msg.guild.id)
+        q.record_message(db, msg)
+    # Do other command processing too
+    await client.process_commands(msg)
+
+#
+# DICE COMMANDS
+#
 
 def get_dice_emoji(die, difficulty: int = 6):
     if die == 1:
@@ -68,6 +84,10 @@ async def roll(ctx, pool: int, *args):
     embed.timestamp = datetime.now(timezone.utc)
     await ctx.send(f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!", embed=embed)
 
+#
+# SCENE COMMANDS
+#
+
 # Check that the user wants to continue interacting with Luna
 async def do_stop(ctx, msg):
     if msg.content.lower() in ABORT_COMMANDS:
@@ -87,7 +107,7 @@ def get_scene_start_header(title: str, author, description: str, url = None):
     return embed
 
 def get_message_link(msg):
-    return f"https://discord.com/channels/{msg.guild.id}/{msg.channel.id}/{msg.id}"
+    return f"https://discordapp.com/channels/{msg.guild.id}/{msg.channel.id}/{msg.id}"
 
 STAFF_ROLE_ID = 731086961741267024
 # Check if the person is staff
@@ -98,7 +118,6 @@ def is_staff(member):
     return False
 
 
-ROLEPLAY_CHANNELS_CATEGORY = 731098249275899947
 SCENE_LOG = 733418460629172274
 ABORT_COMMANDS = ["stop", "nevermind", "nvm"]
 @client.command(name="scene")
@@ -173,6 +192,48 @@ async def end_scene(ctx):
         await ctx.send(embed=discord.Embed(description="End scene."))
         # Finally, reset the channel message.
         await ctx.message.channel.edit(reason=f"Scene ended by {author.display_name}", topic="A roleplay channel. Type /scene your_scene_name in any channel to get started!")
+
+#
+# LEADERBOARD COMMANDS
+#
+
+HUMAN_DATE_FORMAT = "%H:%M, %A, %B %e, %Y"
+def get_period_human(before=None, after=None):
+    '''Turn a period into a human-friendly format'''
+    if before is None and after is None:
+        raise ValueError("Must provide at least one of before / after!")
+    if before is None and after is not None:
+        return f"after {after.strftime(HUMAN_DATE_FORMAT)}"
+    if before is not None and after is None:
+        return f"before {before.strftime(HUMAN_DATE_FORMAT)}"
+    return f"between {after.strftime(HUMAN_DATE_FORMAT)} and {before.strftime(HUMAN_DATE_FORMAT)}"
+
+# Fetch leaderboard info & formats it into a Message-ready format
+def into_leaderboard(ctx, before=None, after=None, limit=None):
+    board = q.count_messages(get_database("leaderboard", ctx.guild.id), before=before, after=after, limit=limit)
+    board = [(ctx.guild.get_member(author_id).display_name, count) for author_id, count in board]
+    board = [f'    {"Name".center(16, "-")}  Posts'] +  [f'{str(i).rjust(2)}. {t[0][:16].rjust(16)}     {str(t[1]).rjust(2)}' for i, t in enumerate(board, 1)]
+    return "```" + "\n".join(board) + "```"
+
+@client.command(name="weekly")
+@handle_error
+async def show_leaderboard(ctx):
+    '''Show the leaderboard for this week'''
+    now = datetime.now(timezone.utc)
+    start_of_week = now - timedelta(days=(now.weekday() + 1) % 7)
+    await ctx.send("Here's the leaderboard for this week!\n" + into_leaderboard(ctx, after=start_of_week, limit=10))
+
+
+@client.command(name="leaderboard")
+@handle_error
+async def show_leaderboard(ctx, *args):
+    '''Show the leaderboard for a period'''
+    pass
+
+#
+#
+#
+
 
 @client.command(name = "error")
 @handle_error
