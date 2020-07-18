@@ -30,7 +30,7 @@ class Database:
     def __init__(self, server_type: str, server_id: int):
         self.server_type = server_type
         self.server_id = server_id
-        self.conn = sqlite3.connect(f'databases/{server_type} {server_id}.db')
+        self.conn = sqlite3.connect(f'databases/{server_id} {server_type}.db')
         # Create version table if it doesnt exist and check version
         cursor = self.conn.cursor()
         cursor.execute("""
