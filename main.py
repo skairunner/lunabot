@@ -142,7 +142,7 @@ async def start_scene(ctx, *args):
         channel = guild.get_channel(c)
         # Channel editing has low rate limit, so do it async
         asyncio.create_task(channel.edit(reason=f"Scene '{title}' started with {author.display_name}", topic=f"{title}: {characters} @ {location}"))
-        
+
         scene_start = await channel.send(f"{author.mention} Scene started!", embed=get_scene_start_header(title, author, f"{characters} @ {location}"))
         # Put it in scene logs
         scenelog = guild.get_channel(SCENE_LOG)
@@ -174,5 +174,8 @@ async def error(ctx):
     raise Exception("test exception")
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig(level=30)
+
     os.makedirs("databases", exist_ok=True)
     client.run(os.getenv("DISCORD_TOKEN"))
