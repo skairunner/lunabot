@@ -107,46 +107,52 @@ async def start_scene(ctx, *args):
     def reply(m):
         return m.channel == channel and m.author == author
 
-    async with ctx.typing():
         # Get user input stuff
-        title = " ".join(args)
-        channel = ctx.message.channel
-        author = ctx.message.author
-        guild = ctx.message.channel.guild
-        await ctx.send(f"I will start a scene named `{title}` for you. Which characters are in this scene?")
+    title = " ".join(args)
+    if len(title) >= 256:
+        await ctx.send("I would love to open a scene for you, but your title is too long. Please try again, making sure to keep your title under 256 characters!")
+        return
+    channel = ctx.message.channel
+    author = ctx.message.author
+    guild = ctx.message.channel.guild
+    await ctx.send(f"I will start a scene named `{title}` for you. Which characters are in this scene?")
+    
+    async with ctx.typing():
         msg = await ctx.bot.wait_for('message', check=reply)
         if await do_stop(ctx, msg):
             return
-        characters = msg.content
-        await ctx.send("Okay! Where is the scene happening? Feel free to look at <#732651975061274734> for inspiration!")
+    characters = msg.content
+    await ctx.send("Okay! Where is the scene happening? Feel free to look at <#732651975061274734> for inspiration!")
+    
+    async with ctx.typing():
         msg = await ctx.bot.wait_for('message', check=reply)
         if await do_stop(ctx, msg):
             return
-        location = msg.content
-        # Check the database to see if there is a free channel
-        db = get_database("scene", guild.id)
-        c = q.get_open_channel(db)
-        if c is None:
-            # Need to make the channel
-            category = guild.get_channel(ROLEPLAY_CHANNELS_CATEGORY)
-            channel_number = q.count_channels(db)
-            channel = await guild.create_text_channel(f'rp-{channel_number + 1}', category=category)
-            # Update db to keep everything in sync
-            q.add_new_channel(db, channel.id, channel.name)
-            c = channel.id
-        # Lock the channel
-        q.reserve_channel(db, c, title, author.id)
-        await ctx.send(f"Your scene has been opened in <#{c}>. Have fun!")
+    location = msg.content
+    # Check the database to see if there is a free channel
+    db = get_database("scene", guild.id)
+    c = q.get_open_channel(db)
+    if c is None:
+        # Need to make the channel
+        category = guild.get_channel(ROLEPLAY_CHANNELS_CATEGORY)
+        channel_number = q.count_channels(db)
+        channel = await guild.create_text_channel(f'rp-{channel_number + 1}', category=category)
+        # Update db to keep everything in sync
+        q.add_new_channel(db, channel.id, channel.name)
+        c = channel.id
+    # Lock the channel
+    q.reserve_channel(db, c, title, author.id)
+    await ctx.send(f"Your scene has been opened in <#{c}>. Have fun!")
 
-        # Notify channel of scene start
-        channel = guild.get_channel(c)
-        # Channel editing has low rate limit, so do it async
-        asyncio.create_task(channel.edit(reason=f"Scene '{title}' started with {author.display_name}", topic=f"{title}: {characters} @ {location}"))
+    # Notify channel of scene start
+    channel = guild.get_channel(c)
+    # Channel editing has low rate limit, so do it async
+    asyncio.create_task(channel.edit(reason=f"Scene '{title}' started with {author.display_name}", topic=f"{title}: {characters} @ {location}"))
 
-        scene_start = await channel.send(f"{author.mention} Scene started!", embed=get_scene_start_header(title, author, f"{characters} @ {location}"))
-        # Put it in scene logs
-        scenelog = guild.get_channel(SCENE_LOG)
-        await scenelog.send(embed=get_scene_start_header(title, author, f"{characters} @ {location}", get_message_link(scene_start)))
+    scene_start = await channel.send(f"{author.mention} Scene started!", embed=get_scene_start_header(title, author, f"{characters} @ {location}"))
+    # Put it in scene logs
+    scenelog = guild.get_channel(SCENE_LOG)
+    await scenelog.send(embed=get_scene_start_header(title, author, f"{characters} @ {location}", get_message_link(scene_start)))
 
 
 @client.command(name = "end")
