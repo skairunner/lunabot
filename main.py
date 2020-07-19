@@ -97,7 +97,6 @@ async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpower
         embed.add_field(name="Successes", value="Botch!", inline=True)
     else:
         embed.add_field(name="Successes", value=successes, inline=True)
-    
     embed.set_footer(text=get_nick_or_name(ctx), icon_url=author.avatar_url)
     embed.timestamp = datetime.now(timezone.utc)
     await ctx.send(f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!", embed=embed)
