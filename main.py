@@ -62,9 +62,11 @@ def roll_heuristic(die, diff, specialized=False):
         return 2
     if die >= diff:
         return 1
+    if die == 1:
+        return -1
     return 0
     
-async def handle_roll(ctx, pool: int, args, is_specialized = False):
+async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpowered = False):
     try:
         diff = int(args[0])
         remainder = " ".join(args[1:])
@@ -78,13 +80,24 @@ async def handle_roll(ctx, pool: int, args, is_specialized = False):
 
     rolls = [random.randint(1, 10) for x in range(pool)]
     successes = sum([roll_heuristic(roll, diff, is_specialized) for roll in rolls])
+    if is_willpowered:
+        if successes < 0:
+            successes = 1
+        else:
+            successes += 1
     emoji = [get_dice_emoji(roll, diff) for roll in rolls]
     die_or_dice = "dice" if pool > 1 else "die"
-    embed_desc = " ".join([get_dice_emoji(roll, diff) for roll in rolls])
+    if is_willpowered:
+        emoji = ["<a:flex:734373583173976075>"] + emoji
+    embed_desc = " ".join(emoji)
     embed = discord.Embed(title=remainder, colour=get_context_color(ctx), description=embed_desc)
     author = ctx.message.author
     embed.add_field(name="Rolls", value=str(rolls), inline=True)
-    embed.add_field(name="Successes", value=successes, inline=True)
+    if successes < 0:
+        embed.add_field(name="Successes", value="Botch!", inline=True)
+    else:
+        embed.add_field(name="Successes", value=successes, inline=True)
+    
     embed.set_footer(text=get_nick_or_name(ctx), icon_url=author.avatar_url)
     embed.timestamp = datetime.now(timezone.utc)
     await ctx.send(f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!", embed=embed)
@@ -97,12 +110,18 @@ async def roll_short(ctx, pool: int, *args):
 @client.command(name='roll')
 @handle_error
 async def roll_long(ctx, *args):
-    if args[0] == "spec":
-        pool = int(args[1])
-        await handle_roll(ctx, pool, args[1:], True)
-    else:
-        pool = int(args[0])
-        await handle_roll(ctx, pool, args[1:], False)
+    is_specced = False
+    is_willpowered = False
+    while args[0] in ["spec", "wp"]:
+        if args[0] == "spec":
+            is_specced = True
+        elif args[0] == "wp":
+            is_willpowered = True
+        args = args[1:]
+
+    pool = int(args[0])
+    args = args[1:]
+    await handle_roll(ctx, pool, args, is_specced, is_willpowered)
 
 @client.command(name='rs')
 @handle_error
@@ -113,6 +132,11 @@ async def rollspec_short(ctx, pool: int, *args):
 @handle_error
 async def rollspec_long(ctx, pool: int, *args):
     await handle_roll(ctx, int(pool), args, True)
+
+@client.command(name='w')
+@handle_error
+async def roll_wp(ctx, pool: int, *args):
+    await handle_roll(ctx, int(pool), args, is_willpowered = True)
 
 #
 # SCENE COMMANDS
