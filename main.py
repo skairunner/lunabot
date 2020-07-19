@@ -57,9 +57,14 @@ def get_nick_or_name(ctx):
         return author.nick
     return author.name
 
-@client.command(name='r')
-@handle_error
-async def roll(ctx, pool: int, *args):
+def roll_heuristic(die, diff, specialized=False):
+    if specialized and die == 10:
+        return 2
+    if die >= diff:
+        return 1
+    return 0
+    
+async def handle_roll(ctx, pool: int, args, is_specialized = False):
     try:
         diff = int(args[0])
         remainder = " ".join(args[1:])
@@ -72,7 +77,7 @@ async def roll(ctx, pool: int, *args):
         return
 
     rolls = [random.randint(1, 10) for x in range(pool)]
-    successes = sum([1 if roll >= diff else 0 for roll in rolls])
+    successes = sum([roll_heuristic(roll, diff, is_specialized) for roll in rolls])
     emoji = [get_dice_emoji(roll, diff) for roll in rolls]
     die_or_dice = "dice" if pool > 1 else "die"
     embed_desc = " ".join([get_dice_emoji(roll, diff) for roll in rolls])
@@ -83,6 +88,31 @@ async def roll(ctx, pool: int, *args):
     embed.set_footer(text=get_nick_or_name(ctx), icon_url=author.avatar_url)
     embed.timestamp = datetime.now(timezone.utc)
     await ctx.send(f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!", embed=embed)
+
+@client.command(name='r')
+@handle_error
+async def roll_short(ctx, pool: int, *args):
+    await handle_roll(ctx, int(pool), args, False)
+
+@client.command(name='roll')
+@handle_error
+async def roll_long(ctx, *args):
+    if args[0] == "spec":
+        pool = int(args[1])
+        await handle_roll(ctx, pool, args[1:], True)
+    else:
+        pool = int(args[0])
+        await handle_roll(ctx, pool, args[1:], False)
+
+@client.command(name='rs')
+@handle_error
+async def rollspec_short(ctx, pool: int, *args):
+    await handle_roll(ctx, int(pool), args, True)
+
+@client.command(name='rollspec')
+@handle_error
+async def rollspec_long(ctx, pool: int, *args):
+    await handle_roll(ctx, int(pool), args, True)
 
 #
 # SCENE COMMANDS
