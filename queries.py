@@ -83,3 +83,7 @@ def count_messages(db: Database, before=None, after=None, limit: int =None):
     where_clause = '' if before is None and after is None else f'WHERE {clauses}'
     limit_clause = '' if limit is None else f'LIMIT {limit}'
     return db.get().execute(f"SELECT author, COUNT(*) FROM messages {where_clause} GROUP BY author ORDER BY COUNT(*) DESC {limit_clause};", variables).fetchall()
+
+def delete_message(db: Database, msg_id: int):
+    '''Delete a message by id, if it exists'''
+    db.get().execute("DELETE FROM messages WHERE message_id=?", (msg_id,))

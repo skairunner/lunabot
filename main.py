@@ -34,6 +34,12 @@ async def on_message(msg):
     # Do other command processing too
     await client.process_commands(msg)
 
+@client.event
+async def on_raw_message_delete(payload):
+    db = get_database("leaderboard", payload.guild_id)
+    q.delete_message(db, payload.message_id)
+    print(f'Deleted msg with id {payload.message_id}')
+
 #
 # DICE COMMANDS
 #
