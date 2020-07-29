@@ -194,6 +194,9 @@ async def start_scene(ctx, *args):
     if len(title) >= 256:
         await ctx.send("I would love to open a scene for you, but your title is too long. Please try again, making sure to keep your title under 256 characters!")
         return
+    if len(title) == 0:
+        await ctx.send("It seems you didn't specify a scene title. Please try again!")
+        return
     channel = ctx.message.channel
     author = ctx.message.author
     guild = ctx.message.channel.guild
