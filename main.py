@@ -236,7 +236,7 @@ async def start_scene(ctx, *args):
 
 @client.command(name = "end")
 @handle_error
-async def end_scene(ctx):
+async def end_scene(ctx, *args):
     # Message is deleted first
     await ctx.message.delete()
 
