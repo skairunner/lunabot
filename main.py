@@ -146,6 +146,9 @@ async def do_stop(ctx, msg):
     if msg.content.lower() in ABORT_COMMANDS:
         await ctx.send("Okay, feel free to ask again later!")
         return True
+    if msg.content.lower().startswith("/scene"):
+        await ctx.send("It seems you're trying to open multiple scenes at the same time. I'm going to stop opening this scene so we can start over.")
+        return True
     return False
 
 # Get the scene start header!
