@@ -10,6 +10,7 @@ import queries as q
 client = commands.Bot('/')
 
 ROLEPLAY_CHANNELS_CATEGORY = 731098249275899947
+BOT_CHANNELS = [732660335424569456, 734420054724051014, 733979833758908516]
 
 def handle_error(f):
     async def inner(ctx, *args, **kwargs):
@@ -73,6 +74,10 @@ def roll_heuristic(die, diff, specialized=False):
     return 0
     
 async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpowered = False):
+    if ctx.message.channel.id not in BOT_CHANNELS:
+        await ctx.send("Please use roll commands in <#732660335424569456>! <a:nom:737681170682216549>")
+        return
+
     try:
         diff = int(args[0])
         remainder = " ".join(args[1:])
