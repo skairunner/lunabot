@@ -333,8 +333,8 @@ async def show_leaderboard_weekly(ctx):
 async def show_leaderboard_lastweek(ctx):
     '''Show the leaderboard for last week.'''
     now = datetime.now(timezone.utc)
-    start_of_week = now - timedelta(days=((now.weekday() + 1) % 7 + 7), hours=now.hour, minutes=now.minute)
-    start_of_last_week = now - timedelta(days=(now.weekday() % 7), hours=now.hour, minutes=now.minute)
+    start_of_last_week = now - timedelta(days=((now.weekday() + 1) % 7 + 7), hours=now.hour, minutes=now.minute)
+    start_of_week = now - timedelta(days=(now.weekday() % 7), hours=now.hour, minutes=now.minute)
     await ctx.send("Here's the leaderboard for last week!\n" + into_leaderboard(ctx, after=start_of_last_week, before=start_of_week))
 
 
