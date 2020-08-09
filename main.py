@@ -6,8 +6,12 @@ import random
 import os
 from db import get_database
 import queries as q
+from help import help
 
-client = commands.Bot('/')
+if os.getenv("DEVELOPMENT_ENVIRONMENT"):
+    client = commands.Bot('?')
+else:
+    client = commands.Bot('/')
 
 ROLEPLAY_CHANNELS_CATEGORY = 731098249275899947
 BOT_CHANNELS = [732660335424569456, 734420054724051014, 733979833758908516]
@@ -112,11 +116,26 @@ async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpower
     embed.timestamp = datetime.now(timezone.utc)
     await ctx.send(f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!", embed=embed)
 
+@help("[dicepool] [difficulty=6] [comment...]", "Plain roll.", "Roll without any special modifiers. If difficulty is not specified, defaults to 6. The comment is optional.")
 @client.command(name='r')
 @handle_error
 async def roll_short(ctx, pool: int, *args):
     await handle_roll(ctx, int(pool), args, False)
 
+@help("wp(?) spec(?) [dicepool] [difficulty=6] [comment...]", "Roll, with optional modifiers.", """Roll with dicepool against difficulty. If difficulty is not specified, it defaults to 6. THe comment is optional. 
+
+You can specify the roll as using willpower by writing 'wp' with no quotes, like this: /roll wp 4
+
+You can specify the roll as specialized, counting 10s as two successes rather than one, by writing 'spec' with no quotes, like this: /roll spec 6
+
+You can also apply both specialization and willpower like this: /roll wp spec 4
+
+The following can be used as shortcuts:
+  /r  - Plain roll
+  /rs - Roll with specialty
+  /w  - Roll with willpower
+  /ws - Roll with willpower and specialty
+""")
 @client.command(name='roll')
 @handle_error
 async def roll_long(ctx, *args):
@@ -133,16 +152,21 @@ async def roll_long(ctx, *args):
     args = args[1:]
     await handle_roll(ctx, pool, args, is_specced, is_willpowered)
 
+rollspec_decorator = help("[dicepool] [difficulty=6] [comment...]", "Roll with specialization", "Roll with specialization, counting 10s as two successes. If difficulty is not specified, defaults to 6. The comment is optional.")
+
+@rollspec_decorator
 @client.command(name='rs')
 @handle_error
 async def rollspec_short(ctx, pool: int, *args):
     await handle_roll(ctx, int(pool), args, True)
 
+@rollspec_decorator
 @client.command(name='rollspec')
 @handle_error
 async def rollspec_long(ctx, pool: int, *args):
     await handle_roll(ctx, int(pool), args, True)
 
+@help("[dicepool] [difficulty=6] [comment...]", "Roll using willpower", "Rolls using willpower. If difficulty is not specified, defaults to 6. The comment is optional.")
 @client.command(name='w')
 @handle_error
 async def roll_wp(ctx, pool: int, *args):
@@ -194,6 +218,7 @@ def is_admin(member):
 
 SCENE_LOG = 733418460629172274
 ABORT_COMMANDS = ["stop", "nevermind", "nvm"]
+@help("[title]", "Start a scene.", "Start a scene. Luna will then ask some follow-up questions about the characters involved and the location.")
 @client.command(name="scene")
 @handle_error
 async def start_scene(ctx, *args):
@@ -251,6 +276,7 @@ async def start_scene(ctx, *args):
     await scenelog.send(embed=get_scene_start_header(title, author, f"{characters} @ {location}", get_message_link(scene_start)))
 
 
+@help("", "End the scene.", "Ends the scene in the channel that this command is called. Only the user who opened the scene can close it, or a moderator.")
 @client.command(name = "end")
 @handle_error
 async def end_scene(ctx, *args):
@@ -292,21 +318,34 @@ def into_leaderboard(ctx, before=None, after=None, limit=None):
     board = [f'    {"Name".center(16, "-")}  Posts'] +  [f'{str(i).rjust(2)}. {t[0][:16].rjust(16)}     {str(t[1]).rjust(2)}' for i, t in enumerate(board, 1)]
     return "```" + "\n".join(board) + "```"
 
+@help("", "Shows the week leaderboard.", "Shows the leaderboard for the current week, from Sunday to the current day.")
 @client.command(name="weekly")
 @handle_error
-async def show_leaderboard(ctx):
+async def show_leaderboard_weekly(ctx):
     '''Show the leaderboard for this week'''
     now = datetime.now(timezone.utc)
-    start_of_week = now - timedelta(days=(now.weekday() + 1) % 7)
+    start_of_week = now - timedelta(days=(now.weekday() + 1) % 7, hours=now.hour, minutes=now.minute)
     await ctx.send("Here's the leaderboard for this week!\n" + into_leaderboard(ctx, after=start_of_week, limit=10))
 
+@help("", "Show last week's leaderboard", "Shows the leaderboard for last week.")
+@client.command(name="lastweek")
+@handle_error
+async def show_leaderboard_lastweek(ctx):
+    '''Show the leaderboard for last week.'''
+    now = datetime.now(timezone.utc)
+    start_of_week = now - timedelta(days=((now.weekday() + 1) % 7 + 7), hours=now.hour, minutes=now.minute)
+    start_of_last_week = now - timedelta(days=(now.weekday() % 7), hours=now.hour, minutes=now.minute)
+    await ctx.send("Here's the leaderboard for last week!\n" + into_leaderboard(ctx, after=start_of_last_week, before=start_of_week))
 
+
+@help("", "TBA", "Not implemented yet.")
 @client.command(name="leaderboard")
 @handle_error
 async def show_leaderboard(ctx, *args):
     '''Show the leaderboard for a period'''
     pass
 
+@help("[#]", "Delete messages", "Clear the last # messages. Can only be used by staff.")
 @client.command(name="clear_last")
 @handle_error
 async def clear_last(ctx, x: int):
@@ -332,6 +371,7 @@ async def clear_last(ctx, x: int):
 #
 
 
+@help("", "Make something go wrong", "Triggers the effects that normally happen when Luna suffers an error, which also includes pinging Sky. Use with caution.")
 @client.command(name = "error")
 @handle_error
 async def error(ctx):
