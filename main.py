@@ -305,8 +305,8 @@ async def list_scenes(ctx):
     output = []
     for name, scene_name in info:
         name = "#" + name[:7]
-        scene_name = scene_name[:32] if scene_name is not None else "Open!"
-        output.append(f'{name.rjust(8)} {scene_name}')
+        scene_name = '"' + scene_name[:30] + '"' if scene_name is not None else "Open!"
+        output.append(f'{name.rjust(8)}: {scene_name}')
     output = "\n".join(output)
     await ctx.send(f"```\n{output}\n```")
 
