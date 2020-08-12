@@ -54,7 +54,12 @@ def free_channel(db: Database, channel_id: int):
     db.commit()
 
 def count_channels(db: Database) -> int:
+    '''Count the number of channels'''
     return db.get().execute("SELECT count(*) FROM channels;").fetchone()[0]
+
+def list_channels(db: Database) -> int:
+    '''List the channels and their state'''
+    return db.get().execute("SELECT channel_name, scene_name FROM channel_scenes;").fetchall()
 
 #
 # LEADERBOARD

@@ -296,6 +296,20 @@ async def end_scene(ctx, *args):
         # Finally, reset the channel message.
         await ctx.message.channel.edit(reason=f"Scene ended by {author.display_name}", topic="A roleplay channel. Type /scene your_scene_name in any channel to get started!")
 
+@help("", "List RP channels", "Lists all the RP channels that exist, as well as whether they are open")
+@client.command(name = "listrp")
+@handle_error
+async def list_scenes(ctx):
+    db = get_database("scene", ctx.message.guild.id)
+    info = q.list_channels(db)
+    output = []
+    for name, scene_name in info:
+        name = "#" + name[:7]
+        scene_name = scene_name[:32] if scene_name is not None else "Open!"
+        output.append(f'{name.rjust(8)} {scene_name}')
+    output = "\n".join(output)
+    await ctx.send(f"```\n{output}\n```")
+
 #
 # LEADERBOARD COMMANDS
 #
