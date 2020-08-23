@@ -15,6 +15,24 @@ else:
 
 ROLEPLAY_CHANNELS_CATEGORY = 731098249275899947
 BOT_CHANNELS = [732660335424569456, 734420054724051014, 733979833758908516]
+ROLE_TORPID = 747031337759801404
+ROLE_EMBRACED = 733018737355128853
+CLAN_ROLES = {
+    "brujah": 733019640900485126,
+    "gangrel": 733019904973996033,
+    "malkavian": 733019933520298087,
+    "nosferatu": 733020022628417576,
+    "toreador": 733020057063653436,
+    "tremere": 733020081394811022,
+    "ventrue": 733020100117921885,
+    "caitiff": 733028399433383966
+}
+
+def get_clan(guild, clan_name: str):
+    '''Given a string, return a Role'''
+    if clan_name in CLAN_ROLES:
+        return guild.get_role(CLAN_ROLES[clan_name])
+    return None
 
 def handle_error(f):
     async def inner(ctx, *args, **kwargs):
@@ -381,9 +399,71 @@ async def clear_last(ctx, x: int):
 
 
 #
-#
+#  Misc administration
 #
 
+def parse_member(ctx, s: str):
+    import re
+    '''Interpret the string as a member, either searching by id or extracting an ID from a mention. Return None if not possible'''
+    # First, if parseable as int, try to get the user
+    try:
+        id = int(s)
+        member = ctx.guild.get_member(id)
+        if member is not None:
+            return member
+    except ValueError:
+        pass
+    # Next, try to parse as a mention
+    match = re.fullmatch(r'<@!?(\d+)>', s.strip())
+    if match is not None:
+        id = int(match.group(1))
+        return ctx.guild.get_member(id)
+    return None
+
+@help("[user id/mention] [clan]", "Embrace", "Give the Embraced role to a user, removing Torpid if applicable. Only usable by staff.")
+@client.command(name = "embrace")
+@handle_error
+async def embrace(ctx, *args):
+    if len(args) < 1:
+        await ctx.send("Please specify who's being embraced!")
+        return
+    elif len(args) < 2:
+        await ctx.send("Please specify which clan to embrace them into!")
+        return
+    identifier = args[0]
+    clan = args[1].lower()
+    if not is_staff(ctx.message.author):
+        await ctx.send("The gift of the Blood can only be bestowed ... by staff. :woman_vampire:")
+        return
+    target = parse_member(ctx, identifier)
+    if target is None:
+        await ctx.send("I couldn't find the person you're trying to embrace :sob:")
+        return
+    await target.remove_roles(ctx.guild.get_role(ROLE_TORPID), reason=f"Embraced by {ctx.message.author.display_name}")
+    clan_role = get_clan(ctx.guild, clan)
+    if clan_role is None:
+        await ctx.send(f"I'm not sure what clan '{clan}' is :dizzy_face:")
+        return
+    await target.add_roles(ctx.guild.get_role(ROLE_EMBRACED), clan_role, reason=f"Embraced by {ctx.message.author.display_name}")
+    await ctx.send(f"Embraced {target.mention} as {clan}!")
+
+@help("[user id/mention]", "Put someone into Torpor", "Put a user into Torpor, removing the Embraced roll and adding the Torpid role.")
+@client.command(name = "torpor")
+@handle_error
+async def torpor(ctx, *args):
+    if not is_staff(ctx.message.author):
+        await ctx.send("You aren't powerful enough to put a vampire into Torpor. Only staff can do that. :cross:")
+        return
+    if len(args) < 1:
+        await ctx.send("Please specify who you're putting into torpor! :coffin:")
+        return
+    target = parse_member(ctx, args[0])
+    if target is None:
+        await ctx.send("I couldn't find the person you're trying to torpor :sob:")
+        return
+    await target.remove_roles(ctx.guild.get_role(ROLE_EMBRACED), reason=f"Torpored by {ctx.message.author.display_name}")
+    await target.add_roles(ctx.guild.get_role(ROLE_TORPID), reason=f"Torpored by {ctx.message.author.display_name}")
+    await ctx.send(f"Put {target.mention} into Torpor!")
 
 @help("", "Make something go wrong", "Triggers the effects that normally happen when Luna suffers an error, which also includes pinging Sky. Use with caution.")
 @client.command(name = "error")
