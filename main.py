@@ -76,6 +76,16 @@ def get_dice_emoji(die, difficulty: int = 6):
         return ":drop_of_blood:"
     return ":x:"
 
+def get_soak_dice_emoji(die):
+    if 6 <= die:
+        return ":shield:"
+    return ":black_circle:"
+
+def get_damage_dice_emoji(die):
+    if 6 <= die:
+        return ":dagger:"
+    return ":black_circle:"
+
 # Get the color of the user who sent the message
 def get_context_color(ctx):
     return ctx.message.author.color
@@ -86,16 +96,16 @@ def get_nick_or_name(ctx):
         return author.nick
     return author.name
 
-def roll_heuristic(die, diff, specialized=False):
+def roll_heuristic(die, diff, specialized=False, no_botch=False):
     if specialized and die == 10:
         return 2
     if die >= diff:
         return 1
-    if die == 1:
+    if die == 1 and not no_botch:
         return -1
     return 0
     
-async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpowered = False):
+async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpowered = False, is_damage = False, is_soak = False):
     if ctx.message.channel.id not in BOT_CHANNELS:
         await ctx.send("Please use roll commands in <#732660335424569456>! <a:nom:737681170682216549>")
         return
@@ -112,13 +122,18 @@ async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpower
         return
 
     rolls = [random.randint(1, 10) for x in range(pool)]
-    successes = sum([roll_heuristic(roll, diff, is_specialized) for roll in rolls])
+    successes = sum([roll_heuristic(roll, diff, is_specialized, is_damage or is_soak) for roll in rolls])
     if is_willpowered:
         if successes < 0:
             successes = 1
         else:
             successes += 1
-    emoji = [get_dice_emoji(roll, diff) for roll in rolls]
+    if is_damage:
+        emoji = [get_damage_dice_emoji(roll) for roll in rolls]
+    elif is_soak:
+        emoji = [get_soak_dice_emoji(roll) for roll in rolls]
+    else:
+        emoji = [get_dice_emoji(roll, diff) for roll in rolls]
     die_or_dice = "dice" if pool > 1 else "die"
     if is_willpowered:
         emoji = ["<a:flex:734373583173976075>"] + emoji
@@ -126,13 +141,29 @@ async def handle_roll(ctx, pool: int, args, is_specialized = False, is_willpower
     embed = discord.Embed(title=remainder, colour=get_context_color(ctx), description=embed_desc)
     author = ctx.message.author
     embed.add_field(name="Rolls", value=str(rolls), inline=True)
-    if successes < 0:
-        embed.add_field(name="Successes", value="Botch!", inline=True)
+    if is_damage:
+        if successes < 0:
+            successes = 0
+        embed.add_field(name="Damage", value=successes, inline=True)
+    elif is_soak:
+        if successes < 0:
+            successes = 0
+        embed.add_field(name="Soaked", value=successes, inline=True)
     else:
-        embed.add_field(name="Successes", value=successes, inline=True)
+        if successes < 0:
+            embed.add_field(name="Successes", value="Botch!", inline=True)
+        else:
+            embed.add_field(name="Successes", value=successes, inline=True)
     embed.set_footer(text=get_nick_or_name(ctx), icon_url=author.avatar_url)
     embed.timestamp = datetime.now(timezone.utc)
-    await ctx.send(f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!", embed=embed)
+
+    if is_damage:
+        fmtstr = f"{author.mention} Rolling {pool} damage!"
+    elif is_soak:
+        fmtstr = f"{author.mention} Rolling {pool} soak!"
+    else:
+        fmtstr = f"{author.mention} Rolling {pool} {die_or_dice} at difficulty {diff}!"
+    await ctx.send(fmtstr, embed=embed)
 
 @help("[dicepool] [difficulty=6] [comment...]", "Plain roll.", "Roll without any special modifiers. If difficulty is not specified, defaults to 6. The comment is optional.")
 @client.command(name='r')
@@ -189,6 +220,20 @@ async def rollspec_long(ctx, pool: int, *args):
 @handle_error
 async def roll_wp(ctx, pool: int, *args):
     await handle_roll(ctx, int(pool), args, is_willpowered = True)
+
+
+@help("[damage dice] [comment...]", "Roll damage", "Roll damage dice. The comment is optional.")
+@client.command(name='dmg')
+@handle_error
+async def roll_dmg(ctx, pool: int, *args):
+    await handle_roll(ctx, int(pool), args, is_damage = True)
+
+@help("[soak dice] [comment...]", "Roll soak", "Roll soak dice. The comment is optional.")
+@client.command(name="soak")
+@handle_error
+async def roll_soak(ctx, pool:int, *args):
+    await handle_roll(ctx, int(pool), args, is_soak = True)
+
 
 #
 # SCENE COMMANDS
